@@ -3,18 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently \"npm run sensor-server\" \"npm run next-dev\" --names \"SENSOR,NEXT\" --prefix-colors \"blue,green\"",
+    "next-dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "sensor-server": "node src/server/lid-angle-server.js",
+    "sensor-server": "npx tsx src/server/lid-angle-server.ts",
     "build-sensor-bridge": "clang -framework Foundation -framework IOKit -framework CoreFoundation -o sensor-bridge src/server/build-sensor-bridge.m",
-    "setup": "npm run build-sensor-bridge && echo 'Setup complete! Run npm run sensor-server to start the WebSocket server.'"
+    "setup": "npm run build-sensor-bridge && echo 'Setup complete! Run npm run dev to start both servers.'"
   },
   "dependencies": {
-    "@metamask/sdk": "^0.33.1",
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
+    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@tanstack/react-query": "^5.90.2",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -23,8 +25,10 @@
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "viem": "^2.37.8",
+    "wagmi": "^2.17.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
@@ -34,6 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.5.13",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",

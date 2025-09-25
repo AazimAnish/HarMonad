@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface SensorData {
-  angle: number;
-  timestamp: number;
-}
+// interface SensorData {
+//   angle: number;
+//   timestamp: number;
+// }
 
 interface UseLidAngleSensorReturn {
   currentAngle: number | null;
@@ -33,21 +33,22 @@ export function useLidAngleSensor(): UseLidAngleSensorReturn {
     }
 
     try {
-      const ws = new WebSocket('ws://localhost:8080/lid-angle');
+      const ws = new WebSocket('ws://localhost:8080');
 
       ws.onopen = () => {
-        console.log('Connected to lid angle sensor');
+        console.log('🔗 Connected to lid angle sensor server');
         setIsConnected(true);
         setError(null);
-
-        ws.send(JSON.stringify({ command: 'start_monitoring' }));
       };
 
       ws.onmessage = (event) => {
         try {
-          const data: SensorData = JSON.parse(event.data);
-          setCurrentAngle(data.angle);
-          setLastUpdate(data.timestamp);
+          const data = JSON.parse(event.data);
+          if (data.type === 'angle' && typeof data.angle === 'number') {
+            setCurrentAngle(data.angle);
+            setLastUpdate(data.timestamp);
+            // console.log(`📐 Received angle: ${data.angle}°`);
+          }
         } catch (parseError) {
           console.error('Failed to parse sensor data:', parseError);
           setError('Failed to parse sensor data');

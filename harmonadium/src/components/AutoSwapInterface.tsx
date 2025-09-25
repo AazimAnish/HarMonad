@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useMetaMaskSDK } from '@/hooks/useMetaMaskSDK';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRainbowKit } from '@/hooks/useRainbowKit';
 import { useAutoSwap } from '@/hooks/useAutoSwap';
+import { useDebounce } from '@/hooks/useDebounce';
 import { MONAD_TESTNET_CONFIG } from '@/lib/config';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Wallet, Power, CheckCircle, XCircle, Clock, AlertCircle, Zap, Shield } from 'lucide-react';
+import { Wallet, CheckCircle, XCircle, AlertCircle, Zap, Shield, Info } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AutoSwapInterfaceProps {
   targetToken?: {
@@ -31,46 +34,40 @@ export function AutoSwapInterface({
 }: AutoSwapInterfaceProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [isExecutingSwap, setIsExecutingSwap] = useState(false);
+  // Removed unused WMON-related state since we use native MON now
+  const lastSwapRef = useRef<{ angle: number; token: string; timestamp: number } | null>(null);
 
   const {
     account,
     isConnected,
     isConnecting,
-    error: metaMaskError,
-    connect,
-    disconnect,
+    error: rainbowKitError,
+    // connect, disconnect, - Removed unused RainbowKit methods
     switchToMonadTestnet,
     sendTransaction,
     requestSwapAuthorization,
     isAuthorizedForSwaps,
-    authorizationStatus
-  } = useMetaMaskSDK();
+    authorizationStatus,
+    // wrapMonad, getWMONBalance - Removed since we use native MON now
+  } = useRainbowKit();
 
-  const { isEnabled, lastSwap, swapHistory, executeSwap } = useAutoSwap();
+  const { isEnabled, swapHistory, queueStatus, executeSwap } = useAutoSwap();
 
   const isOnMonadTestnet = account?.chainId === MONAD_TESTNET_CONFIG.chainId;
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Debug: Check if wallet is available
+    if (typeof window !== 'undefined') {
+      console.log('🔍 Debug - Window.ethereum available:', !!window.ethereum);
+      console.log('🔍 Debug - RainbowKit initialized');
+    }
   }, []);
 
-  // Auto-execute swap when angle is stable and authorized
-  useEffect(() => {
-    if (
-      isStableAngle &&
-      targetToken &&
-      angle !== null &&
-      angle !== undefined &&
-      isAuthorizedForSwaps &&
-      account &&
-      isOnMonadTestnet &&
-      !isExecutingSwap
-    ) {
-      handleAutoSwap();
-    }
-  }, [isStableAngle, targetToken, angle, isAuthorizedForSwaps, account, isOnMonadTestnet, isExecutingSwap]);
+  // Removed WMON balance fetching since we use native MON now
 
-  const handleAutoSwap = async () => {
+  const handleAutoSwap = useCallback(async () => {
     if (!account || !targetToken || angle === null || angle === undefined) return;
 
     setIsExecutingSwap(true);
@@ -78,22 +75,88 @@ export function AutoSwapInterface({
 
     try {
       const result = await executeSwap(angle, account.address, sendTransaction);
+
+      // Update last swap reference to prevent duplicates
+      lastSwapRef.current = {
+        angle: angle,
+        token: targetToken.symbol,
+        timestamp: Date.now()
+      };
+
+      // Show toast notification
+      if (result.success) {
+        toast.success(`Swap successful! ${angle}° → ${targetToken.symbol}`, {
+          description: result.txHash ? `TX: ${result.txHash.slice(0, 10)}...` : undefined,
+          duration: 5000,
+        });
+      } else {
+        toast.error(`Swap failed: ${result.error || 'Unknown error'}`, {
+          duration: 6000,
+        });
+      }
+
       onAutoSwapExecuted?.(result.success, result.txHash);
     } catch (error) {
       console.error('Auto-swap execution failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Auto-swap failed: ${errorMessage}`, {
+        duration: 6000,
+      });
       onAutoSwapExecuted?.(false);
     } finally {
       setIsExecutingSwap(false);
     }
-  };
+  }, [account, targetToken, angle, executeSwap, sendTransaction, onAutoSwapExecuted]);
+
+  // Debounce the angle to prevent rapid swaps
+  const debouncedAngle = useDebounce(angle, 2000); // 2 second debounce
+  const debouncedIsStable = useDebounce(isStableAngle, 1000); // 1 second debounce for stability
+
+  // Auto-execute swap when angle is stable and authorized
+  useEffect(() => {
+    if (
+      debouncedIsStable &&
+      targetToken &&
+      debouncedAngle !== null &&
+      debouncedAngle !== undefined &&
+      isAuthorizedForSwaps &&
+      account &&
+      isOnMonadTestnet &&
+      !isExecutingSwap
+    ) {
+      // Check if we've already swapped for this angle/token combination recently
+      const now = Date.now();
+      const lastSwap = lastSwapRef.current;
+      
+      if (lastSwap && 
+          lastSwap.angle === debouncedAngle && 
+          lastSwap.token === targetToken.symbol &&
+          (now - lastSwap.timestamp) < 10000) { // 10 second cooldown
+        console.log('Skipping duplicate swap - too recent');
+        return;
+      }
+
+      handleAutoSwap();
+    }
+  }, [debouncedIsStable, targetToken, debouncedAngle, isAuthorizedForSwaps, account, isOnMonadTestnet, isExecutingSwap, handleAutoSwap]);
 
   const handleAuthorize = async () => {
     try {
       await requestSwapAuthorization();
+      toast.success('Swap authorization successful!', {
+        description: 'You can now make automatic swaps based on lid angle',
+        duration: 5000,
+      });
     } catch (error) {
       console.error('Authorization failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Authorization failed: ${errorMessage}`, {
+        duration: 6000,
+      });
     }
   };
+
+  // Removed handleWrapMON since we use native MON directly now
 
   if (!isMounted) {
     return (
@@ -109,7 +172,7 @@ export function AutoSwapInterface({
   }
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg border-2 hover:border-purple-200">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
@@ -118,10 +181,43 @@ export function AutoSwapInterface({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {metaMaskError && (
-          <Alert>
+            {/* Debug Information */}
+            {process.env.NODE_ENV === 'development' && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="text-xs space-y-2">
+                    <div>Wallet Available: {typeof window !== 'undefined' ? (window.ethereum ? 'Yes' : 'No') : 'Unknown'}</div>
+                    <div>Connection Status: {isConnecting ? 'Connecting...' : isConnected ? 'Connected' : 'Not Connected'}</div>
+                    <div>Authorization: {isAuthorizedForSwaps ? 'Authorized' : 'Not Authorized'}</div>
+                    {isConnected && isAuthorizedForSwaps && (
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            // Execute a real swap at 119° angle (WSOL)
+                            if (account) {
+                              executeSwap(119, account.address, sendTransaction);
+                            }
+                          }} 
+                          disabled={isExecutingSwap || !account}
+                        >
+                          {isExecutingSwap ? 'Swapping...' : 'Swap 119° → WSOL'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+        {rainbowKitError && (
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{metaMaskError}</AlertDescription>
+            <AlertDescription>
+              {rainbowKitError}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -131,43 +227,54 @@ export function AutoSwapInterface({
               <Wallet className="h-12 w-12 mx-auto mb-4 text-gray-400" />
               <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Connect MetaMask to enable automatic angle-based token swapping
+                Connect your wallet to enable automatic angle-based token swapping
               </p>
-              <Button
-                onClick={connect}
-                disabled={isConnecting}
-                size="lg"
-                className="w-full"
-              >
-                <Wallet className="h-4 w-4 mr-2" />
-                {isConnecting ? 'Connecting...' : 'Connect MetaMask'}
-              </Button>
+              <div className="flex justify-center">
+                <ConnectButton />
+              </div>
+              {!isConnecting && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Supports MetaMask, WalletConnect, and more
+                </p>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Wallet Status */}
-            <div className="p-3 bg-secondary/50 rounded-lg">
+            <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Connected Wallet:</span>
+                <span className="text-sm font-medium text-green-700">Connected Wallet:</span>
                 <div className="flex gap-2">
                   <Badge variant="secondary">
                     <Wallet className="h-3 w-3 mr-1" />
                     Connected
                   </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={disconnect}
-                  >
-                    <Power className="h-3 w-3 mr-1" />
-                    Disconnect
-                  </Button>
+                  <ConnectButton />
                 </div>
               </div>
-              <div className="font-mono text-sm break-all">{account.address}</div>
-              <div className="text-sm text-muted-foreground mt-1">
-                Balance: {parseFloat(account.balance).toFixed(4)} MON
+              <div className="font-mono text-sm break-all">{account?.address}</div>
+                  <div className="mt-2">
+                    <div className="text-sm text-muted-foreground">Native MON Balance:</div>
+                    <div className="font-mono text-lg font-semibold">
+                      {account ? parseFloat(account.balance).toFixed(4) : '0.0000'} MON
+                    </div>
+                    <div className="text-xs text-green-600 mt-1">
+                      ✅ Ready for angle-based swaps (no wrapping needed)
+                    </div>
+                  </div>
+              
+              <div className="text-xs text-muted-foreground mt-2">
+                💡 Get more MON from the{' '}
+                <a 
+                  href="https://faucet.monad.xyz" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Monad faucet
+                </a>{' '}
+                if needed.
               </div>
             </div>
 
@@ -209,26 +316,80 @@ export function AutoSwapInterface({
                   )}
                 </div>
 
-                {!isAuthorizedForSwaps ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Sign once to enable automatic swaps based on your lid angle.
-                      No manual approval needed for each transaction.
-                    </p>
-                    <Button onClick={handleAuthorize} className="w-full">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Authorize Automatic Swaps
-                    </Button>
+                    {!isAuthorizedForSwaps ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Dual signing: Connect wallet + approve ERC-20 tokens for 0x protocol.
+                          Once authorized, swaps execute automatically without individual approvals.
+                        </p>
+                        <Button onClick={handleAuthorize} className="w-full">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Authorize 0x Swaps (Dual Sign)
+                        </Button>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          🔗 Powered by <a href="https://0x.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">0x Protocol</a> for best swap rates
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm space-y-1">
+                        <p className="text-green-600">
+                          ✅ 0x Protocol swaps enabled - 0.01 MON per automatic transaction
+                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          🔗 Using 0x API for optimal swap routing and rates
+                        </div>
+                        {authorizationStatus?.validUntil && (
+                          <p className="text-muted-foreground">
+                            Valid until: {new Date(authorizationStatus.validUntil * 1000).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+              </div>
+            )}
+
+            {/* Swap Queue Status */}
+            {queueStatus.total > 0 && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-orange-800">
+                    🔄 Swap Queue ({queueStatus.total} swaps)
                   </div>
-                ) : (
-                  <div className="text-sm space-y-1">
-                    <p className="text-green-600">
-                      ✅ Automatic swaps enabled for up to 0.1 MON per transaction
-                    </p>
-                    {authorizationStatus?.validUntil && (
-                      <p className="text-muted-foreground">
-                        Valid until: {new Date(authorizationStatus.validUntil * 1000).toLocaleString()}
-                      </p>
+                  <div className="flex gap-1 text-xs">
+                    {queueStatus.pending > 0 && (
+                      <Badge variant="outline" className="text-orange-600">
+                        {queueStatus.pending} pending
+                      </Badge>
+                    )}
+                    {queueStatus.processing > 0 && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        {queueStatus.processing} processing
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs text-orange-700">
+                  Swaps are queued to prevent cancellation during lid movement. Each swap executes in order.
+                </div>
+                {queueStatus.queue.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {queueStatus.queue.slice(0, 3).map((swap) => (
+                      <div key={swap.id} className="flex justify-between items-center text-xs p-1 bg-orange-100 rounded">
+                        <span>{swap.angle.toFixed(1)}° → {swap.targetToken}</span>
+                        <span className={`
+                          ${swap.status === 'pending' ? 'text-orange-600' : ''}
+                          ${swap.status === 'processing' ? 'text-blue-600' : ''}
+                          ${swap.status === 'completed' ? 'text-green-600' : ''}
+                          ${swap.status === 'failed' ? 'text-red-600' : ''}
+                        `}>
+                          {swap.status}
+                        </span>
+                      </div>
+                    ))}
+                    {queueStatus.queue.length > 3 && (
+                      <div className="text-xs text-center text-orange-600">
+                        ... and {queueStatus.queue.length - 3} more
+                      </div>
                     )}
                   </div>
                 )}
@@ -259,6 +420,42 @@ export function AutoSwapInterface({
               </div>
             )}
 
+            {/* Help for failed swaps */}
+                {swapHistory.length > 0 && swapHistory[0] && !swapHistory[0].success && swapHistory[0].error && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="text-sm">{swapHistory[0].error}</p>
+                        {swapHistory[0].error.includes('MON balance') && (
+                          <div className="text-xs text-muted-foreground">
+                            💡 <strong>Need more MON?</strong> Visit the{' '}
+                            <a 
+                              href="https://faucet.monad.xyz" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              Monad Faucet
+                            </a>{' '}
+                            to get MON for swapping.
+                          </div>
+                        )}
+                        {swapHistory[0].error.includes('Internal JSON-RPC error') && (
+                          <div className="text-xs text-muted-foreground">
+                            💡 <strong>Network Issue:</strong> Transaction failed on Monad testnet. Try again or check your network connection.
+                          </div>
+                        )}
+                        {swapHistory[0].error.includes('User rejected') && (
+                          <div className="text-xs text-muted-foreground">
+                            💡 <strong>Transaction Rejected:</strong> You cancelled the transaction in MetaMask.
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
             {/* Recent Swap History */}
             {swapHistory.length > 0 && (
               <div className="space-y-2">
@@ -276,7 +473,7 @@ export function AutoSwapInterface({
                             Success
                           </Badge>
                         ) : (
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge variant="destructive" className="text-xs" title={swap.error}>
                             <XCircle className="h-2 w-2 mr-1" />
                             Failed
                           </Badge>

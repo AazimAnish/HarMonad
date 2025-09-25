@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AngleSensorDisplay } from '@/components/AngleSensorDisplay';
 import { AutoSwapInterface } from '@/components/AutoSwapInterface';
+import { TokenBalanceDisplay } from '@/components/TokenBalanceDisplay';
+import { SwapCountdownDisplay } from '@/components/SwapCountdownDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ANGLE_TO_TOKEN_MAPPING, MIN_VISIBLE_ANGLE, MAX_OPENING_ANGLE } from '@/lib/config';
-import { Settings, Info, Laptop } from 'lucide-react';
+import { ANGLE_TO_TOKEN_MAPPING, MIN_VISIBLE_ANGLE, MAX_OPENING_ANGLE, MONAD_TESTNET_TOKENS } from '@/lib/config';
+import { useAngleStabilityDebounce } from '@/hooks/useDebounce';
+import { Settings, Info, Coins } from 'lucide-react';
+import { ethers } from 'ethers';
 
 interface SwapEvent {
   id: string;
@@ -21,23 +24,55 @@ interface SwapEvent {
 
 export default function Home() {
   const [currentAngle, setCurrentAngle] = useState<number | null>(null);
-  const [targetToken, setTargetToken] = useState<any>(null);
+  const [targetToken, setTargetToken] = useState<typeof MONAD_TESTNET_TOKENS[keyof typeof MONAD_TESTNET_TOKENS] | null>(null);
   const [isStableAngle, setIsStableAngle] = useState(false);
   const [swapHistory, setSwapHistory] = useState<SwapEvent[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Get the debounce countdown for display
+  const { stableAngle, isStabilizing, countdown } = useAngleStabilityDebounce(
+    (currentAngle !== null && currentAngle !== undefined && currentAngle >= MIN_VISIBLE_ANGLE) ? currentAngle : null,
+    3000 // 3 second countdown
+  );
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const handleAngleStable = (angle: number, token: any, isStable: boolean) => {
+  // Handle live angle updates (for real-time card selection)
+  const handleAngleUpdate = useCallback((angle: number, targetToken: {
+    token: string;
+    address: string;
+    name: string;
+    symbol: string;
+  } | null) => {
     setCurrentAngle(angle);
-    setTargetToken(token);
-    setIsStableAngle(isStable);
-  };
+    // Convert the simplified token object to our full token structure
+    if (targetToken) {
+      const fullToken = Object.values(MONAD_TESTNET_TOKENS).find(t => t.symbol === targetToken.symbol);
+      setTargetToken(fullToken || null);
+    } else {
+      setTargetToken(null);
+    }
+  }, []);
 
-  const handleSwapComplete = (success: boolean, txHash?: string) => {
+  // Handle stable angle (for swap execution)
+  const handleAngleStable = useCallback((angle: number, targetToken: {
+    token: string;
+    address: string;
+    name: string;
+    symbol: string;
+  } | null, isStable: boolean) => {
+    // Update stable angle state
+    setIsStableAngle(isStable);
+    
+    // Also update live angle state to ensure consistency
+    handleAngleUpdate(angle, targetToken);
+  }, [handleAngleUpdate]);
+
+  const handleSwapComplete = useCallback((success: boolean, txHash?: string) => {
     if (currentAngle && targetToken) {
       const swapEvent: SwapEvent = {
         id: Date.now().toString(),
@@ -49,8 +84,11 @@ export default function Home() {
       };
 
       setSwapHistory(prev => [swapEvent, ...prev.slice(0, 9)]);
+
+      // Refresh token balances after swap
+      setBalanceRefreshTrigger(prev => prev + 1);
     }
-  };
+  }, [currentAngle, targetToken]);
 
   if (!isMounted) {
     return (
@@ -66,32 +104,89 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Video */}
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-1000"
+        src="/bgMonad.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+      />
+      
+      {/* Overlay for better content readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/30 -z-5"></div>
+      
+      {/* Main content with backdrop */}
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-white/85 to-gray-100/85 backdrop-blur-md animate-in fade-in duration-1000">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <header className="text-center mb-8">
+        <header className="text-center mb-8 animate-in slide-in-from-top duration-1000">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Laptop className="h-8 w-8 text-blue-600" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              LidAngle DeFi
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Harmonad.png"
+              alt="Harmonadium Logo"
+              className="h-12 w-auto transform hover:scale-110 transition-transform duration-300"
+            />
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Harmonadium
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Revolutionary DeFi trading controlled by your MacBook's lid angle.
+            Revolutionary DeFi trading controlled by your MacBook&apos;s lid angle.
             Sign once, then automatically swap tokens based on your screen angle.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <AngleSensorDisplay onAngleStable={handleAngleStable} />
-          <AutoSwapInterface
-            targetToken={targetToken}
-            angle={currentAngle}
-            isStableAngle={isStableAngle}
-            onAutoSwapExecuted={handleSwapComplete}
-          />
+        {/* Swap Countdown (shows during stabilization) */}
+        {isStabilizing && currentAngle !== null && targetToken && (
+          <div className="mb-6 animate-in slide-in-from-top duration-500">
+            <SwapCountdownDisplay
+              countdown={countdown}
+              angle={currentAngle}
+              sellAmount={ethers.parseEther('0.01').toString()}
+              userAddress={undefined} // Will be passed from AutoSwapInterface if needed
+              isActive={true}
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-in slide-in-from-bottom duration-1000 delay-300">
+          <div className="transform hover:scale-[1.02] transition-transform duration-300">
+            <AngleSensorDisplay 
+              onAngleUpdate={handleAngleUpdate}
+              onAngleStable={handleAngleStable} 
+              videoRef={videoRef} 
+            />
+          </div>
+          <div className="transform hover:scale-[1.02] transition-transform duration-300">
+            <AutoSwapInterface
+              targetToken={targetToken ? {
+                token: targetToken.symbol,
+                address: targetToken.address,
+                name: targetToken.name,
+                symbol: targetToken.symbol
+              } : undefined}
+              angle={currentAngle}
+              isStableAngle={isStableAngle}
+              onAutoSwapExecuted={handleSwapComplete}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom duration-1000 delay-500">
+          {/* Token Balance Display */}
+          <div className="transform hover:scale-[1.02] transition-transform duration-300">
+            <TokenBalanceDisplay
+              refreshTrigger={balanceRefreshTrigger}
+              showSwapPairs={true}
+              highlightToken={targetToken?.symbol}
+            />
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -108,19 +203,29 @@ export default function Home() {
                   return (
                     <div
                       key={range}
-                      className={`p-3 rounded-lg border ${
+                      className={`p-3 rounded-lg border transition-all duration-300 ${
                         isActive
-                          ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-400'
-                          : 'bg-secondary/50'
+                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 ring-2 ring-blue-400 shadow-lg transform scale-105'
+                          : 'bg-secondary/50 hover:bg-secondary/70'
                       }`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="font-medium">{token.symbol}</div>
-                          <div className="text-sm text-muted-foreground">{range}°</div>
+                          <div className={`font-medium ${isActive ? 'text-blue-700' : ''}`}>
+                            {token.symbol}
+                            {isActive && <span className="ml-2 text-xs">🎯 ACTIVE</span>}
+                          </div>
+                          <div className={`text-sm ${isActive ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                            {range}°
+                            {isActive && currentAngle && (
+                              <span className="ml-2 font-medium">
+                                (Current: {currentAngle.toFixed(1)}°)
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <Badge variant={isActive ? 'default' : 'secondary'}>
-                          {token.token}
+                        <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'animate-pulse' : ''}>
+                          {token.symbol}
                         </Badge>
                       </div>
                     </div>
@@ -218,6 +323,7 @@ export default function Home() {
             Ensure your MacBook Air M3 lid angle sensor is supported and WebSocket server is running
           </p>
         </footer>
+      </div>
       </div>
     </div>
   );
