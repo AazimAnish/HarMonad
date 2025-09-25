@@ -146,12 +146,11 @@ export function useAutoSwap(): UseAutoSwapReturn {
       const maxGasCost = estimatedGas * gasPrice; // Maximum gas cost
       const totalRequired = swapAmount + maxGasCost; // Swap amount + gas fees
 
-      if (typeof window !== 'undefined' && window.ethereum) {
+        if (typeof window !== 'undefined' && window.ethereum) {
         try {
           const provider = new ethers.BrowserProvider(window.ethereum);
-
+          
           // Ensure we're checking balance on the correct network
-          const network = await provider.getNetwork();
           const rawChainId = 10143;
           const currentChainId = Number(rawChainId);
 
@@ -193,7 +192,6 @@ export function useAutoSwap(): UseAutoSwapReturn {
       let chainId: number = MONAD_TESTNET_CONFIG.chainId; // Always use Monad testnet
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          const provider = new ethers.BrowserProvider(window.ethereum);
           // const network = await provider.getNetwork();
           const rawChainId = 10143;
           const currentChainId = Number(rawChainId);

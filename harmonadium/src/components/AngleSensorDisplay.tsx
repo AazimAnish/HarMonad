@@ -60,19 +60,19 @@ export function AngleSensorDisplay({ onAngleUpdate, onAngleStable, videoRef }: A
   // Audio feedback for lid movement - continuous playback
   useEffect(() => {
     if (currentAngle === null || currentAngle === undefined) return;
-    
+
     const lastAngle = lastAngleRef.current;
-    
+
     // Detect ANY movement (more than 1 degree change)
     if (lastAngle !== null && Math.abs(currentAngle - lastAngle) > 1) {
       console.log(`🎵 Lid movement detected: ${lastAngle}° → ${currentAngle}°`);
-      
+
       // Clear any existing movement timeout (movement is continuing)
       if (movementTimeoutRef.current) {
         clearTimeout(movementTimeoutRef.current);
         movementTimeoutRef.current = null;
       }
-      
+
       // Start or continue audio playback
       if (!isAudioPlaying) {
         playMovementSound(); // Start fresh
@@ -80,17 +80,17 @@ export function AngleSensorDisplay({ onAngleUpdate, onAngleStable, videoRef }: A
       } else {
         continueMovementSound(); // Continue existing playback
       }
-      
+
       // Set new timeout for when movement stops
       movementTimeoutRef.current = setTimeout(() => {
         console.log('🔇 No movement for 1 second - stopping audio');
-        stopMovementSound(); // This will start the 3-second fade timeout
+        stopMovementSound(); // This will start the 1-second fade timeout
         setTimeout(() => {
           setIsAudioPlaying(false); // Update UI state after fade completes
-        }, 3500); // 3 sec delay + 0.5 sec fade
+        }, 1100); // 1 sec delay + 0.1 sec fade
       }, 1000); // 1 second of no movement triggers stop sequence
     }
-    
+
     lastAngleRef.current = currentAngle;
   }, [currentAngle, playMovementSound, continueMovementSound, stopMovementSound, isAudioPlaying]);
 
@@ -169,104 +169,102 @@ export function AngleSensorDisplay({ onAngleUpdate, onAngleStable, videoRef }: A
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="transition-all duration-300 hover:shadow-lg border-2 hover:border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>MacBook Lid Angle Sensor</span>
-            <div className="flex items-center gap-2">
-              {isAudioPlaying && (
-                <Badge variant="secondary" className="flex items-center gap-1 bg-purple-100 text-purple-800 animate-pulse">
-                  <Music className="h-3 w-3" />
-                  Playing
-                </Badge>
-              )}
-              {isConnected ? (
-                <Badge variant="secondary" className="flex items-center gap-1">
+    <Card className="text-gray-800">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>MacBook Lid Angle Sensor</span>
+          <div className="flex items-center gap-2">
+            {isAudioPlaying && (
+                <Badge variant="secondary" className="flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-300 animate-pulse">
+                <Music className="h-3 w-3" />
+                Playing
+              </Badge>
+            )}
+            {isConnected ? (
+                <Badge variant="secondary" className="flex items-center gap-1 bg-green-100 text-green-800 border border-green-300">
                   <Wifi className="h-3 w-3" />
                   Connected
                 </Badge>
               ) : (
-                <Badge variant="destructive" className="flex items-center gap-1">
+                <Badge variant="destructive" className="flex items-center gap-1 bg-red-100 text-red-800 border border-red-300">
                   <WifiOff className="h-3 w-3" />
                   Disconnected
                 </Badge>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={isConnected ? disconnect : connect}
-              >
-                <RefreshCw className="h-3 w-3" />
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Current Angle:</span>
-              <span className="font-mono">
-                {currentAngle !== null && currentAngle !== undefined ? `${currentAngle.toFixed(1)}°` : '--'}
-              </span>
-            </div>
-            <Progress value={angleProgress} className="h-3 transition-all duration-300" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{MIN_VISIBLE_ANGLE}°</span>
-              <span>{MAX_OPENING_ANGLE}°</span>
-            </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isConnected ? disconnect : connect}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
           </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          {targetToken && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Current Angle:</span>
+            <span className="font-mono">
+              {currentAngle !== null && currentAngle !== undefined ? `${currentAngle.toFixed(1)}°` : '--'}
+            </span>
+          </div>
+          <Progress value={angleProgress} className="h-3 transition-all duration-300" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{MIN_VISIBLE_ANGLE}°</span>
+            <span>{MAX_OPENING_ANGLE}°</span>
+          </div>
+        </div>
+
+        {targetToken && (
             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg transform transition-all duration-300 hover:scale-105">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-blue-800">Target Token: {targetToken.symbol}</div>
-                  <div className="text-sm text-blue-600">{targetToken.name}</div>
-                </div>
-                <Badge variant="outline" className="bg-white border-blue-300 text-blue-700 font-semibold">{targetToken.symbol}</Badge>
+                  <div className="font-semibold text-gray-800">Target Token: {targetToken.symbol}</div>
+                  <div className="text-sm text-gray-600">{targetToken.name}</div>
               </div>
+              <Badge variant="outline" className="bg-white border-blue-300 text-blue-700 font-semibold">{targetToken.symbol}</Badge>
             </div>
-          )}
+          </div>
+        )}
 
-          {isStabilizing && (
+        {isStabilizing && (
             <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-lg animate-pulse">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-yellow-800">
+                <div className="text-sm font-medium text-gray-800">
                   🔄 Angle stabilizing... Swap will execute in:
                 </div>
-                <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 font-bold text-lg px-3 py-1">{countdown}s</Badge>
-              </div>
+              <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 font-bold text-lg px-3 py-1">{countdown}s</Badge>
             </div>
-          )}
+          </div>
+        )}
 
-          {stableAngle && stableTargetToken && !isStabilizing && (
+        {stableAngle && stableTargetToken && !isStabilizing && (
             <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg animate-pulse-glow">
-              <div className="text-sm font-semibold text-green-800 flex items-center gap-2">
+              <div className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                 <span className="text-lg">✅</span>
                 Angle stable at {stableAngle.toFixed(1)}° → Ready to swap to {stableTargetToken.symbol}
               </div>
             </div>
           )}
 
-          {(currentAngle !== null && currentAngle !== undefined && currentAngle < MIN_VISIBLE_ANGLE) && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Angle too low ({currentAngle.toFixed(1)}°) - screen visibility compromised.
-                Minimum angle: {MIN_VISIBLE_ANGLE}°
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        {(currentAngle !== null && currentAngle !== undefined && currentAngle < MIN_VISIBLE_ANGLE) && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Angle too low ({currentAngle.toFixed(1)}°) - screen visibility compromised.
+              Minimum angle: {MIN_VISIBLE_ANGLE}°
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 }

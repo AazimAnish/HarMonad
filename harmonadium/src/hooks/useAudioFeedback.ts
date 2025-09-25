@@ -63,7 +63,7 @@ export function useAudioFeedback(): UseAudioFeedbackReturn {
     const audio = audioRef.current;
     const video = videoRef.current;
     const initialVolume = audio.volume;
-    const fadeSteps = 20; // Number of fade steps
+    const fadeSteps = 10; // Number of fade steps  
     const fadeInterval = 100; // ms between each step
     const volumeStep = initialVolume / fadeSteps;
 

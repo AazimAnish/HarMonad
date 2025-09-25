@@ -123,12 +123,6 @@ export function TokenBalanceDisplay({
     setLastUpdate(Date.now());
   }, [address, isOnMonadTestnet, nativeBalance, erc20Balances, isNativeLoading, isErc20Loading, nativeError, erc20Error]);
 
-  // Refresh balances when external trigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      handleRefresh();
-    }
-  }, [refreshTrigger]);
 
   const handleRefresh = useCallback(async () => {
     if (!address || !isOnMonadTestnet) return;
@@ -153,6 +147,13 @@ export function TokenBalanceDisplay({
       setIsRefreshing(false);
     }
   }, [address, isOnMonadTestnet, refetchNative, refetchErc20]);
+
+  // Refresh balances when external trigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      handleRefresh();
+    }
+  }, [refreshTrigger, handleRefresh]);
 
   const getTotalValueInMON = useCallback(() => {
     // Calculate total portfolio value using realistic exchange rates

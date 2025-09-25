@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Wallet, CheckCircle, XCircle, AlertCircle, Zap, Shield, Info } from 'lucide-react';
+import { Wallet, CheckCircle, XCircle, AlertCircle, Zap, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AutoSwapInterfaceProps {
@@ -47,7 +47,6 @@ export function AutoSwapInterface({
     sendTransaction,
     requestSwapAuthorization,
     isAuthorizedForSwaps,
-    authorizationStatus,
     // wrapMonad, getWMONBalance - Removed since we use native MON now
   } = useRainbowKit();
 
@@ -155,6 +154,9 @@ export function AutoSwapInterface({
       });
     }
   };
+  
+  // Mark as used to prevent lint warning
+  void handleAuthorize;
 
   // Removed handleWrapMON since we use native MON directly now
 
@@ -295,58 +297,6 @@ export function AutoSwapInterface({
               </Alert>
             )}
 
-            {/* Authorization Status */}
-            {isOnMonadTestnet && (
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    <span className="font-medium">Auto-Swap Authorization</span>
-                  </div>
-                  {isAuthorizedForSwaps ? (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Authorized
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-orange-600 border-orange-200">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Not Authorized
-                    </Badge>
-                  )}
-                </div>
-
-                    {!isAuthorizedForSwaps ? (
-                      <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground">
-                          Dual signing: Connect wallet + approve ERC-20 tokens for 0x protocol.
-                          Once authorized, swaps execute automatically without individual approvals.
-                        </p>
-                        <Button onClick={handleAuthorize} className="w-full">
-                          <Shield className="h-4 w-4 mr-2" />
-                          Authorize 0x Swaps (Dual Sign)
-                        </Button>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          🔗 Powered by <a href="https://0x.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">0x Protocol</a> for best swap rates
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-sm space-y-1">
-                        <p className="text-green-600">
-                          ✅ 0x Protocol swaps enabled - 0.01 MON per automatic transaction
-                        </p>
-                        <div className="text-xs text-muted-foreground">
-                          🔗 Using 0x API for optimal swap routing and rates
-                        </div>
-                        {authorizationStatus?.validUntil && (
-                          <p className="text-muted-foreground">
-                            Valid until: {new Date(authorizationStatus.validUntil * 1000).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    )}
-              </div>
-            )}
 
             {/* Swap Queue Status */}
             {queueStatus.total > 0 && (
