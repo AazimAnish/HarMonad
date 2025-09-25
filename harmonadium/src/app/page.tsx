@@ -180,8 +180,8 @@ export default function Home() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center font-secondary">
           <div className="animate-pulse">
-            {/* <img src="/Harmonad.png" alt="Harmonadium" className="h-16 w-auto mx-auto mb-4" /> */}
-            <h1 className="font-primary text-2xl text-white mb-2">Harmonadium</h1>
+            {/* <img src="/Harmonad.png" alt="Harmonad" className="h-16 w-auto mx-auto mb-4" /> */}
+            <h1 className="font-primary text-2xl text-white mb-2">Harmonad</h1>
             <p className="text-gray-400">Loading the vibe...</p>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function Home() {
             {/* Header Section */}
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-primary mb-3 font-primary">
-                Harmonadium
+                Harmonad
               </h1>
               <p className="text-gray-800 text-lg font-secondary">
                 MacBook Lid Angle-Based Token Swapping
@@ -247,7 +247,7 @@ export default function Home() {
                 <div className="backdrop-blur-md bg-white/10 border border-white/20 flex flex-col gap-6 rounded-xl py-6 shadow-xl shadow-black/20 hover:bg-white/15 transition-all duration-300">
                   <div className="px-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Wallet Connection</h3>
-                    <p className="text-gray-700 text-sm mb-6">Connect your wallet to get started with Harmonadium</p>
+                    <p className="text-gray-700 text-sm mb-6">Connect your wallet to get started with Harmonad</p>
                     <div className="flex justify-center">
                       <ConnectButton />
                     </div>

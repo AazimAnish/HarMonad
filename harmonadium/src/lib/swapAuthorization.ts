@@ -44,7 +44,7 @@ export class SwapAuthorizationManager {
   }
 
   private getStorageKey(userAddress: string): string {
-    return `harmonadium_swap_auth_${userAddress.toLowerCase()}`;
+    return `harmonad_swap_auth_${userAddress.toLowerCase()}`;
   }
 
   private saveToStorage(userAddress: string, auth: SwapAuthorization) {
@@ -308,7 +308,7 @@ export class SwapAuthorizationManager {
       // Clear all stored authorizations
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('harmonadium_swap_auth_')) {
+        if (key && key.startsWith('harmonad_swap_auth_')) {
           localStorage.removeItem(key);
         }
       }

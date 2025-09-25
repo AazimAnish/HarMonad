@@ -25,7 +25,7 @@ const monadTestnet = {
 
 // Configure RainbowKit
 const config = getDefaultConfig({
-  appName: 'Harmonadium',
+  appName: 'Harmonad',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '8b123c4d5e6f7a8b9c0d1e2f3a4b5c6d', // WalletConnect project ID
   chains: [monadTestnet],
   ssr: false, // Disable SSR for better compatibility

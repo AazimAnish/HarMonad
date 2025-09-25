@@ -17,7 +17,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Harmonadium - Musical DeFi Trading",
+  title: "Harmonad - Musical DeFi Trading",
   description: "Revolutionary DeFi trading controlled by your MacBook's lid angle with musical feedback",
 };
 

@@ -29,11 +29,11 @@ export function FloatingNavbar({ swapHistory, currentAngle }: FloatingNavbarProp
         <div className="flex items-center gap-2">
           {/* <img
             src="/Harmonad.png"
-            alt="Harmonadium"
+            alt="Harmonad"
             className="h-8 w-auto"
           /> */}
           <span className="font-primary text-lg font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Harmonadium
+            Harmonad
           </span>
         </div>
 

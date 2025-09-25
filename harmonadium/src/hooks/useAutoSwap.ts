@@ -56,7 +56,7 @@ export function useAutoSwap(): UseAutoSwapReturn {
     if (typeof window === 'undefined') return;
 
     try {
-      const stored = localStorage.getItem('harmonadium_swap_history');
+      const stored = localStorage.getItem('harmonad_swap_history');
       if (stored) {
         setSwapHistory(JSON.parse(stored));
       }
@@ -70,7 +70,7 @@ export function useAutoSwap(): UseAutoSwapReturn {
     if (typeof window === 'undefined') return;
 
     try {
-      localStorage.setItem('harmonadium_swap_history', JSON.stringify(history.slice(0, 50))); // Keep last 50
+      localStorage.setItem('harmonad_swap_history', JSON.stringify(history.slice(0, 50))); // Keep last 50
     } catch (error) {
       console.error('Failed to save swap history:', error);
     }
@@ -81,7 +81,7 @@ export function useAutoSwap(): UseAutoSwapReturn {
     const checkEnabled = () => {
       // Check if any user has authorization
       const accounts = typeof window !== 'undefined' ?
-        Object.keys(localStorage).filter(key => key.startsWith('harmonadium_swap_auth_')).length > 0 :
+        Object.keys(localStorage).filter(key => key.startsWith('harmonad_swap_auth_')).length > 0 :
         false;
 
       setIsEnabled(accounts);

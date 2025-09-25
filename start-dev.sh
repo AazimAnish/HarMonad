@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Harmonadium Development Startup Script
+# Harmonad Development Startup Script
 
-echo "🚀 Starting Harmonadium development environment..."
+echo "🚀 Starting Harmonad development environment..."
 
 # Function to kill processes on exit
 cleanup() {
